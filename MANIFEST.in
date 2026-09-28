@@ -1,0 +1,3 @@
+recursive-include pretix_fontsloader/static *
+recursive-include pretix_fontsloader/templates *
+recursive-include pretix_fontsloader/locale *

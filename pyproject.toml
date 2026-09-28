@@ -1,0 +1,32 @@
+[project]
+name = "pretix-fontsloader"
+dynamic = ["version"]
+description = "Load fonts for pretix PDF layouts from a drop-in folder"
+readme = "README.rst"
+requires-python = ">=3.9"
+keywords = ["pretix"]
+authors = []
+
+dependencies = []
+
+[project.entry-points."pretix.plugin"]
+pretix_fontsloader = "pretix_fontsloader:PretixPluginMeta"
+
+[project.entry-points."distutils.commands"]
+build = "pretix_plugin_build.build:CustomBuild"
+
+[build-system]
+requires = [
+    "setuptools",
+    "pretix-plugin-build",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "pretix_fontsloader.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pretix*"]
+namespaces = false

@@ -1,0 +1,3 @@
+[pretixplugin]
+package = "pretix-fontsloader"
+modules = ["pretix_fontsloader"]
