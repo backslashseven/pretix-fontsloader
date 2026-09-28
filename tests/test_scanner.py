@@ -100,3 +100,14 @@ def test_manifest_check_skips_uncollected(tmp_path, monkeypatch, caplog):
     styles = scan_fonts(str(tmp_path), PREFIX, check_manifest=True)["Open Sans"]
     assert styles["bold"]["truetype"] == PREFIX + "/OpenSans-Regular.ttf"
     assert "rebuild" in caplog.text
+
+
+def test_report_lists_every_font_file(tmp_path):
+    add(tmp_path, "OpenSans-Regular.ttf")
+    (tmp_path / "broken.ttf").write_bytes(b"not a font")
+    (tmp_path / "readme.txt").write_text("hi")
+    report = []
+    scanner._scan(str(tmp_path), PREFIX, False, report)
+    assert report[0] == ("OpenSans-Regular.ttf", "Open Sans / regular")
+    assert report[1][0] == "broken.ttf" and report[1][1].startswith("skipped: ")
+    assert len(report) == 2

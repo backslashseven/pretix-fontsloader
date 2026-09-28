@@ -64,3 +64,41 @@ Production:
 Why the restart? pretix registers fonts with the PDF engine only once per process.
 Until the files are collected into the static files, the plugin leaves them out
 (with a warning in the log); otherwise the layout editor and settings pages would fail.
+
+Docker (``pretix/standalone``)
+------------------------------
+
+The standalone image runs ``collectstatic`` only while the image is built
+(``make production``), and not when the container starts. Fonts in a mounted folder
+would never be collected, so bake them into the image before ``make production``:
+
+.. code-block:: dockerfile
+
+    FROM pretix/standalone:stable
+    USER root
+    RUN DJANGO_SETTINGS_MODULE= pip3 install git+https://github.com/backslashseven/pretix-fontsloader.git
+    COPY fonts/ /pretix/fonts/
+    ENV PRETIX_PRETIX_FONTSLOADER_DIRECTORY=/pretix/fonts
+    USER pretixuser
+    RUN cd /pretix/src && make production
+
+The environment variable takes precedence over ``pretix.cfg`` and applies both while
+building and at runtime. To add a font, put it into ``fonts/`` and rebuild the image.
+
+Checking the setup
+------------------
+
+The plugin is intentionally not listed in the event plugin settings, since it applies to
+all events. To see what it is doing, run:
+
+.. code-block:: bash
+
+    python -m pretix fontsloader_status          # plain installation
+    docker exec <container> pretix fontsloader_status
+
+It shows the font directory in use, every font file with the family and style it was
+recognized as (or why it was skipped), and the fonts available in PDF layouts.
+
+Variable fonts (e.g. ``*-VariableFont_wght.ttf``) are loaded, but only their default
+instance is used, which is often the thinnest weight. Use the static font files instead
+(Google Fonts downloads contain them in the ``static/`` folder).

@@ -57,9 +57,19 @@ def _in_manifest(path):
         return False
 
 
-def _scan(directory, prefix, check_manifest):
+def _skip(report, path, message, *args):
+    logger.warning("Skipping font file %s: " + message, path, *args)
+    report.append((os.path.basename(path), "skipped: " + message % args))
+
+
+def _scan(directory, prefix, check_manifest, report=None):
+    """
+    ``report``, if given, is filled with a ``(file name, result)`` tuple per font file.
+    """
     from reportlab.pdfbase.ttfonts import TTFontFile
 
+    if report is None:
+        report = []
     entries = {e.name: e for e in os.scandir(directory) if e.is_file()}
     families = {}
 
@@ -71,17 +81,17 @@ def _scan(directory, prefix, check_manifest):
         try:
             font = TTFontFile(path)
         except Exception as e:
-            logger.warning(
-                "Skipping font file %s: %s (only TrueType-outline fonts are supported; "
-                "convert CFF-based .otf files to .ttf, e.g. with fontTools' otf2ttf)", path, e
+            _skip(
+                report, path, "%s (only TrueType-outline fonts are supported; "
+                "convert CFF-based .otf files to .ttf, e.g. with fontTools' otf2ttf)", e
             )
             continue
 
         static_path = "{}/{}".format(prefix, name)
         if check_manifest and not _in_manifest(static_path):
-            logger.warning(
-                "Skipping font file %s: not collected into static files yet, "
-                "run 'python -m pretix rebuild' (or collectstatic) and restart", path
+            _skip(
+                report, path, "not collected into static files yet, "
+                "run 'python -m pretix rebuild' (or collectstatic) and restart"
             )
             continue
 
@@ -89,10 +99,7 @@ def _scan(directory, prefix, check_manifest):
         slot = _style_slot(font)
         styles = families.setdefault(family, {})
         if slot in styles:
-            logger.warning(
-                "Skipping font file %s: family '%s' already has a %s cut (%s)",
-                path, family, slot, styles[slot]["truetype"]
-            )
+            _skip(report, path, "family '%s' already has a %s cut (%s)", family, slot, styles[slot]["truetype"])
             continue
 
         formats = {"truetype": static_path}
@@ -102,6 +109,16 @@ def _scan(directory, prefix, check_manifest):
                     formats[fmt] = "{}/{}".format(prefix, candidate)
                     break
         styles[slot] = formats
+
+        result = "{} / {}".format(family, slot)
+        if "fvar" in font.table:
+            # reportlab ignores variation axes and always uses the default instance
+            logger.warning(
+                "Font file %s is a variable font, only its default instance '%s' is used; "
+                "prefer static font files", path, family
+            )
+            result += " (variable font: only the default instance is used, prefer static font files)"
+        report.append((name, result))
 
     # pretix requires every family to have a regular cut and uses the others if present;
     # fill missing cuts from the closest available one like hand-written font packs do
