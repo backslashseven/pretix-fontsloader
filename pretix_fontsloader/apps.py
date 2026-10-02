@@ -32,7 +32,7 @@ def add_static_dir(directory):
         )
         return False
     settings.STATICFILES_DIRS = list(settings.STATICFILES_DIRS) + [(STATIC_PREFIX, directory)]
-    logger.info("Loading fonts from %s", directory)
+    logger.debug("Loading fonts from %s", directory)
     return True
 
 
